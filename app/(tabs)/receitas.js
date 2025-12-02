@@ -40,7 +40,7 @@ export default function ReceitasTab() {
       <TouchableOpacity 
         style={styles.button}
         // O caminho '/listaReceitas' leva para o arquivo index.js dentro da pasta listaReceitas
-        onPress={() => router.push('/listaReceitas')} 
+        onPress={() => router.push('/minhasReceitas')} 
       >
         <Text style={styles.buttonText}>CONFIRA AQUI</Text>
       </TouchableOpacity>
