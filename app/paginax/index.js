@@ -12,7 +12,7 @@ export default function ListaReceitas() {
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.card} 
-      onPress={() => router.push(`/minhasReceitas/${item.id}`)} // Vai para o detalhe
+      onPress={() => router.push(`/paginax/${item.id}`)} // Vai para o detalhe
     >
       <Image source={typeof item.imagem === 'string' ? { uri: item.imagem } : item.imagem} style={styles.cardImage} />
       <Text style={styles.cardTitle}>{item.titulo}</Text>
