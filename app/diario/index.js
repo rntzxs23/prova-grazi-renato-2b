@@ -2,27 +2,27 @@ import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Animated } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { router } from "expo-router";
-import { useCalories } from "./caloriesContext"; // ajuste caminho se necessário
+import { useCalories } from "../../caloriesContext";
+
+
+
 
 export default function Diario() {
   const { metaDiaria, consumidas, categorias } = useCalories();
 
-  // restante (não negativo)
   const restante = Math.max(metaDiaria - consumidas, 0);
 
-  // animação do progresso (consumidas / meta)
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const progresso = consumidas / metaDiaria;
+
     Animated.timing(anim, {
-      toValue: Math.min(Math.max(progresso, 0), 1), // sempre entre 0 e 1
+      toValue: Math.min(Math.max(progresso, 0), 1),
       duration: 600,
-      useNativeDriver: false, // ProgressBar não é compatível com native driver
+      useNativeDriver: true,
     }).start();
   }, [consumidas, metaDiaria]);
-
-  const progress = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
     <View style={styles.container}>
@@ -34,8 +34,8 @@ export default function Diario() {
         </View>
       </View>
 
-      {/* Barra mostra quanto já foi consumido (opção A) */}
-      <ProgressBar progress={progress} color="#2196F3" style={styles.progressBar} />
+      {/* Barra de progresso */}
+      <ProgressBar progress={anim} color="#2196F3" style={styles.progressBar} />
 
       {/* Categorias */}
       <FlatList
@@ -52,7 +52,6 @@ export default function Diario() {
             <TouchableOpacity
               style={styles.botaoAdd}
               onPress={() => {
-                // abrir tela de seleção (rota: /selecionarAlimento)
                 router.push(`/selecionarAlimento?categoriaId=${item.id}`);
               }}
             >
