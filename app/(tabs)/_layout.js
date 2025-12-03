@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
+// AQUI ESTAVA O ERRO: Precisamos importar o MaterialCommunityIcons também!
+import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
@@ -9,6 +10,7 @@ export default function TabLayout() {
       tabBarStyle: { paddingBottom: 5, height: 60 },
     }}>
       
+      {/* 1. HOME */}
       <Tabs.Screen
         name="index"
         options={{
@@ -17,6 +19,7 @@ export default function TabLayout() {
         }}
       />
 
+      {/* 2. DIÁRIO */}
       <Tabs.Screen
         name="diario/index"
         options={{
@@ -25,6 +28,7 @@ export default function TabLayout() {
         }}
       />
 
+      {/* 3. RECEITAS */}
       <Tabs.Screen
         name="receitas"
         options={{
@@ -33,7 +37,17 @@ export default function TabLayout() {
         }}
       />
 
-      {/* --- NOVO: ABA SOBRE MIM --- */}
+      {/* 4. JEJUM (NOVA) */}
+      <Tabs.Screen
+        name="jejum"
+        options={{
+          title: 'Jejum',
+          // Agora vai funcionar porque importamos o MaterialCommunityIcons lá em cima
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="timer-outline" size={26} color={color} />,
+        }}
+      />
+
+      {/* 5. PERFIL */}
       <Tabs.Screen
         name="sobre"
         options={{
