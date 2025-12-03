@@ -3,51 +3,60 @@ import React, { createContext, useContext, useState } from 'react';
 const CaloriesContext = createContext();
 
 export function CaloriesProvider({ children }) {
-  // --- Configurações Iniciais ---
+  // Metas Gerais
   const [metaDiaria, setMetaDiaria] = useState(2000);
-  const [consumidas, setConsumidas] = useState(0);
   
-  // Categorias de refeição
+  // Metas de Macros
+  const [metaCarbos, setMetaCarbos] = useState(258);
+  const [metaProteinas, setMetaProteinas] = useState(103);
+  const [metaGorduras, setMetaGorduras] = useState(68);
+
+  // Consumo Atual
+  const [consumidas, setConsumidas] = useState(0);
+  const [gastas, setGastas] = useState(244);
+  
+  const [macrosConsumidos, setMacrosConsumidos] = useState({
+    carbos: 0, proteinas: 0, gorduras: 0
+  });
+
+  // --- ATUALIZAÇÃO AQUI: Categorias com METAS e ÍCONES ---
   const [categorias, setCategorias] = useState([
-    { id: '1', nome: 'Café da Manhã', kcalUsada: 0 },
-    { id: '2', nome: 'Almoço', kcalUsada: 0 },
-    { id: '3', nome: 'Jantar', kcalUsada: 0 },
-    { id: '4', nome: 'Lanches', kcalUsada: 0 },
+    { id: '1', nome: 'Café da Manhã', kcalUsada: 0, meta: 400, icon: 'coffee-outline' }, // 20%
+    { id: '2', nome: 'Almoço',       kcalUsada: 0, meta: 800, icon: 'food-steak' },     // 40%
+    { id: '3', nome: 'Jantar',       kcalUsada: 0, meta: 600, icon: 'fish' },           // 30%
+    { id: '4', nome: 'Lanches',      kcalUsada: 0, meta: 200, icon: 'food-apple' },     // 10%
   ]);
 
-  // --- Dados de Peso (Que adicionamos antes) ---
-  const [pesoAtual, setPesoAtual] = useState(70.0); 
-  const [metaPeso, setMetaPeso] = useState(null); 
+  const [pesoAtual, setPesoAtual] = useState(70.0);
+  const [metaPeso, setMetaPeso] = useState(null);
 
-  // --- A FUNÇÃO PRINCIPAL ---
-  const addCalories = (amount, categoriaId) => {
-    // 1. Atualiza o total geral
-    setConsumidas((prev) => prev + amount);
+  // Função de Adicionar
+  const addAlimentoCompleto = (alimento, categoriaId) => {
+    setConsumidas((prev) => prev + alimento.kcal);
 
-    // 2. Atualiza a categoria específica (ex: soma só no Almoço)
+    setMacrosConsumidos((prev) => ({
+      carbos: prev.carbos + (alimento.carbos || 0),
+      proteinas: prev.proteinas + (alimento.proteinas || 0),
+      gorduras: prev.gorduras + (alimento.gorduras || 0),
+    }));
+
     setCategorias((prevCats) =>
       prevCats.map((cat) =>
-        cat.id === categoriaId ? { ...cat, kcalUsada: cat.kcalUsada + amount } : cat
+        cat.id === categoriaId ? { ...cat, kcalUsada: cat.kcalUsada + alimento.kcal } : cat
       )
     );
   };
 
+  const addCalories = (amount, categoriaId) => {
+    addAlimentoCompleto({ kcal: amount, carbos: 0, proteinas: 0, gorduras: 0 }, categoriaId);
+  };
+
   return (
     <CaloriesContext.Provider value={{ 
-      metaDiaria, 
-      consumidas, 
-      categorias, 
-      
-      // AQUI ESTÁ A CORREÇÃO MÁGICA:
-      // Disponibilizamos a função com os dois nomes para não dar erro
-      addCalories,
-      addItems: addCalories, // <--- Isso conserta o erro "addItems is not a function"
-
-      // Dados de peso
-      pesoAtual, 
-      setPesoAtual,
-      metaPeso, 
-      setMetaPeso
+      metaDiaria, consumidas, gastas, categorias,
+      macrosConsumidos, metaCarbos, metaProteinas, metaGorduras,
+      addCalories, addItems: addAlimentoCompleto,
+      pesoAtual, setPesoAtual, metaPeso, setMetaPeso
     }}>
       {children}
     </CaloriesContext.Provider>

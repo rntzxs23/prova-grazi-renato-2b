@@ -2,12 +2,81 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Alert } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { router } from "expo-router";
-import { useCalories } from "../../../caloriesContext";
-import { MaterialCommunityIcons } from '@expo/vector-icons'; 
+import { useCalories } from "../../../caloriesContext"; // Verifique se o caminho dos pontos está certo pra você
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 
-// (MANTENHA O COMPONENTE CopoAgua AQUI IGUAL AO ANTERIOR...)
+// Componente para animar o círculo do SVG
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// --- NOVO COMPONENTE: CARD DA CATEGORIA ---
+const CategoriaCard = ({ item, onPressAdd }) => {
+  // Configuração do Círculo Pequeno
+  const size = 50; 
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Calcula progresso (0 a 1)
+    const progress = item.meta > 0 ? item.kcalUsada / item.meta : 0;
+    Animated.timing(anim, {
+      toValue: Math.min(Math.max(progress, 0), 1),
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, [item.kcalUsada, item.meta]);
+
+  const strokeDashoffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0]
+  });
+
+  return (
+    <View style={styles.catCard}>
+      {/* Lado Esquerdo: Ícone com Círculo Animado */}
+      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+        <Svg width={size} height={size}>
+          {/* Fundo Cinza */}
+          <Circle cx={size/2} cy={size/2} r={radius} stroke="#f0f0f0" strokeWidth={strokeWidth} fill="transparent" />
+          {/* Progresso Azul */}
+          <AnimatedCircle
+            cx={size/2} cy={size/2} r={radius}
+            stroke="#2196F3" strokeWidth={strokeWidth} fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size/2}, ${size/2}`}
+          />
+        </Svg>
+        {/* Ícone no Centro */}
+        <View style={{ position: 'absolute' }}>
+           <MaterialCommunityIcons name={item.icon} size={24} color="#555" />
+        </View>
+      </View>
+
+      {/* Meio: Textos */}
+      <View style={styles.catInfo}>
+        <Text style={styles.catTitle}>{item.nome}</Text>
+        <Text style={styles.catMeta}>
+          {Math.round(item.kcalUsada)} / {item.meta} kcal
+        </Text>
+      </View>
+
+      {/* Direita: Botão Adicionar */}
+      <TouchableOpacity style={styles.btnAdd} onPress={onPressAdd}>
+        <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+// ------------------------------------------
+
+// (MANTENHA O COMPONENTE COPO DE ÁGUA - Igual)
 const CopoAgua = ({ status, onPress, isMeta }) => {
-  // ... (código do copo igualzinho ao que te mandei antes)
   const alturaAgua = useRef(new Animated.Value(status === 'cheio' ? 100 : 0)).current;
   useEffect(() => {
     if (status === 'cheio') {
@@ -27,93 +96,120 @@ const CopoAgua = ({ status, onPress, isMeta }) => {
           </TouchableOpacity>
         )}
       </View>
-      {isMeta && status === 'cheio' && (
-        <View style={styles.checkMeta}><MaterialCommunityIcons name="check-circle" size={20} color="#4CAF50" /></View>
-      )}
+      {isMeta && status === 'cheio' && <View style={styles.checkMeta}><MaterialCommunityIcons name="check-circle" size={20} color="#4CAF50" /></View>}
       <Text style={styles.mlTexto}>250ml</Text>
     </View>
   );
 };
 
 export default function Diario() {
-  const { metaDiaria, consumidas, categorias, pesoAtual, setPesoAtual, metaPeso } = useCalories();
-  const restante = Math.max(metaDiaria - consumidas, 0);
-  const anim = useRef(new Animated.Value(0)).current;
-  const [coposBebeu, setCoposBebeu] = useState(0);
+  const { 
+    metaDiaria, consumidas, gastas, categorias, pesoAtual, setPesoAtual, metaPeso,
+    macrosConsumidos, metaCarbos, metaProteinas, metaGorduras 
+  } = useCalories();
 
-  // Animação Calorias
+  const restante = Math.max(metaDiaria - consumidas, 0);
+  const [coposBebeu, setCoposBebeu] = useState(0);
+  
+  // Animação Painel Principal
+  const anim = useRef(new Animated.Value(0)).current;
+  const radius = 50; 
+  const circumference = 2 * Math.PI * radius;
+
   useEffect(() => {
-    const progresso = consumidas / metaDiaria;
-    Animated.timing(anim, { toValue: Math.min(Math.max(progresso, 0), 1), duration: 600, useNativeDriver: false }).start();
+    const progresso = metaDiaria > 0 ? consumidas / metaDiaria : 0;
+    Animated.timing(anim, {
+      toValue: Math.min(Math.max(progresso, 0), 1),
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
   }, [consumidas, metaDiaria]);
+
+  const strokeDashoffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0]
+  });
 
   const beberAgua = () => setCoposBebeu(prev => prev + 1);
   const totalCoposParaMostrar = Math.max(8, coposBebeu + 1);
   const coposArray = Array.from({ length: totalCoposParaMostrar });
 
-  // --- FUNÇÕES DE PESO ---
   const alterarPeso = (valor) => {
     const novoPeso = parseFloat((pesoAtual + valor).toFixed(1));
     setPesoAtual(novoPeso);
-
-    // Verifica se atingiu a meta (considerando uma margem pequena de 0.1kg)
-    if (metaPeso && Math.abs(novoPeso - metaPeso) < 0.1) {
-      Alert.alert("PARABÉNS! 🎉", "Você atingiu sua meta de peso! Continue firme na sua jornada.");
-    }
+    if (metaPeso && Math.abs(novoPeso - metaPeso) < 0.1) Alert.alert("PARABÉNS! 🎉", "Meta atingida!");
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
       
-      {/* PAINEL CALORIAS */}
-      <View style={styles.painelWrapper}>
-        <View style={styles.painel}>
-          <Text style={styles.painelNumero}>{restante.toFixed(0)}</Text>
-          <Text style={styles.painelTexto}>kcal restantes</Text>
+      {/* PAINEL PRINCIPAL */}
+      <View style={styles.novoPainel}>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValor}>{consumidas.toFixed(0)}</Text>
+            <Text style={styles.statLabel}>Consumidas</Text>
+          </View>
+          <View style={styles.circleWrapper}>
+            <Svg height="120" width="120" viewBox="0 0 120 120">
+              <Circle cx="60" cy="60" r={radius} stroke="#f0f0f0" strokeWidth="10" fill="transparent" />
+              <AnimatedCircle
+                cx="60" cy="60" r={radius} stroke="#4DB6AC" strokeWidth="10" fill="transparent"
+                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round" rotation="-90" origin="60, 60"
+              />
+            </Svg>
+            <View style={styles.circleTextContainer}>
+              <Text style={styles.circleNumber}>{restante.toFixed(0)}</Text>
+              <Text style={styles.circleLabel}>Restantes</Text>
+            </View>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValor}>{gastas}</Text>
+            <Text style={styles.statLabel}>Gastas</Text>
+          </View>
+        </View>
+
+        <View style={styles.macrosContainer}>
+          <View style={styles.macroItem}>
+            <Text style={styles.macroLabel}>Carboidratos</Text>
+            <ProgressBar progress={macrosConsumidos.carbos / metaCarbos} color="#4FC3F7" style={styles.macroBar} />
+            <Text style={styles.macroValue}>{macrosConsumidos.carbos.toFixed(0)} / {metaCarbos} g</Text>
+          </View>
+          <View style={styles.macroItem}>
+            <Text style={styles.macroLabel}>Proteína</Text>
+            <ProgressBar progress={macrosConsumidos.proteinas / metaProteinas} color="#4DB6AC" style={styles.macroBar} />
+            <Text style={styles.macroValue}>{macrosConsumidos.proteinas.toFixed(0)} / {metaProteinas} g</Text>
+          </View>
+          <View style={styles.macroItem}>
+            <Text style={styles.macroLabel}>Gordura</Text>
+            <ProgressBar progress={macrosConsumidos.gorduras / metaGorduras} color="#FFB74D" style={styles.macroBar} />
+            <Text style={styles.macroValue}>{macrosConsumidos.gorduras.toFixed(0)} / {metaGorduras} g</Text>
+          </View>
         </View>
       </View>
-      <ProgressBar progress={consumidas / metaDiaria} color="#2196F3" style={styles.progressBar} />
 
-
-      {/* --- NOVO: CONTROLE DE PESO --- */}
+      {/* CONTROLE DE PESO */}
       <View style={styles.pesoContainer}>
         <View style={styles.pesoHeader}>
           <Text style={styles.pesoTitulo}>Controle de Peso</Text>
           {metaPeso && <Text style={styles.metaTexto}>Meta: {metaPeso} kg</Text>}
         </View>
-        
         <View style={styles.pesoControles}>
-          {/* Botão Menos */}
-          <TouchableOpacity style={styles.btnPeso} onPress={() => alterarPeso(-0.1)}>
-            <MaterialCommunityIcons name="minus" size={24} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Peso Atual no Meio */}
-          <View style={styles.pesoDisplay}>
-            <Text style={styles.pesoValor}>{pesoAtual.toFixed(1)}</Text>
-            <Text style={styles.pesoUnidade}>kg</Text>
-          </View>
-
-          {/* Botão Mais */}
-          <TouchableOpacity style={styles.btnPeso} onPress={() => alterarPeso(0.1)}>
-            <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnPeso} onPress={() => alterarPeso(-0.1)}><MaterialCommunityIcons name="minus" size={24} color="#fff" /></TouchableOpacity>
+          <View style={styles.pesoDisplay}><Text style={styles.pesoValor}>{pesoAtual.toFixed(1)}</Text><Text style={styles.pesoUnidade}>kg</Text></View>
+          <TouchableOpacity style={styles.btnPeso} onPress={() => alterarPeso(0.1)}><MaterialCommunityIcons name="plus" size={24} color="#fff" /></TouchableOpacity>
         </View>
       </View>
 
-
-      {/* LISTA DE REFEIÇÕES */}
+      {/* --- LISTA DE REFEIÇÕES (NOVO VISUAL) --- */}
       <View style={{ marginTop: 20 }}>
         {categorias.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View>
-              <Text style={styles.cardTitulo}>{item.nome}</Text>
-              <Text style={styles.cardSub}>{Math.round(item.kcalUsada)} kcal</Text>
-            </View>
-            <TouchableOpacity style={styles.botaoAdd} onPress={() => router.push(`/selecionarAlimento?categoriaId=${item.id}`)}>
-              <Text style={styles.botaoAddTexto}>+</Text>
-            </TouchableOpacity>
-          </View>
+          <CategoriaCard 
+            key={item.id} 
+            item={item} 
+            onPressAdd={() => router.push(`/selecionarAlimento?categoriaId=${item.id}`)}
+          />
         ))}
       </View>
 
@@ -135,31 +231,75 @@ export default function Diario() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 20 },
-  painelWrapper: { alignItems: "center", marginTop: 20, marginBottom: 30 },
-  painel: { width: 180, height: 180, borderRadius: 100, backgroundColor: "#2196F3", justifyContent: "center", alignItems: "center", elevation: 8 },
-  painelNumero: { fontSize: 42, fontWeight: "bold", color: "#fff" },
-  painelTexto: { color: "#fff", marginTop: 4 },
-  progressBar: { height: 10, borderRadius: 10, marginTop: 10 },
-  
-  // --- ESTILOS DO PESO (NOVO) ---
-  pesoContainer: { backgroundColor: '#fff', marginTop: 20, padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#eee', elevation: 2 },
+  container: { flex: 1, backgroundColor: "#f8f9fa", padding: 20 },
+
+  // --- ESTILOS DO CARD DA CATEGORIA (NOVO) ---
+  catCard: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 2, // Sombra Android
+    shadowColor: '#000', // Sombra iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  catInfo: {
+    flex: 1, // Ocupa o espaço do meio
+    paddingHorizontal: 15,
+  },
+  catTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  catMeta: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 4,
+  },
+  btnAdd: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // --- ESTILOS DO PAINEL PRINCIPAL ---
+  novoPainel: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 20, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8,
+  },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  statItem: { alignItems: 'center', flex: 1 },
+  statValor: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  statLabel: { fontSize: 12, color: '#888', marginTop: 2 },
+  circleWrapper: { width: 120, height: 120, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  circleTextContainer: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
+  circleNumber: { fontSize: 26, fontWeight: 'bold', color: '#333' },
+  circleLabel: { fontSize: 12, color: '#888' },
+  macrosContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+  macroItem: { width: '30%', alignItems: 'center' },
+  macroLabel: { fontSize: 12, color: '#666', marginBottom: 5 },
+  macroBar: { width: '100%', height: 6, borderRadius: 5, backgroundColor: '#f0f0f0' },
+  macroValue: { fontSize: 11, fontWeight: 'bold', color: '#333', marginTop: 5 },
+
+  // --- ESTILOS PESO E ÁGUA ---
+  pesoContainer: { backgroundColor: '#fff', padding: 15, borderRadius: 15, marginBottom: 15, elevation: 1 },
   pesoHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   pesoTitulo: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   metaTexto: { fontSize: 16, color: '#4CAF50', fontWeight: 'bold' },
   pesoControles: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20 },
-  btnPeso: { backgroundColor: '#2196F3', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  btnPeso: { backgroundColor: '#2196F3', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
   pesoDisplay: { alignItems: 'center', width: 100 },
   pesoValor: { fontSize: 32, fontWeight: 'bold', color: '#333' },
   pesoUnidade: { fontSize: 14, color: '#777' },
 
-  // (MANTENHA OS OUTROS ESTILOS: card, aguaSection, etc...)
-  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f1f1f1", padding: 18, borderRadius: 18, marginBottom: 12 },
-  cardTitulo: { fontSize: 18, fontWeight: "bold", color: "#333" },
-  cardSub: { fontSize: 14, color: "#777" },
-  botaoAdd: { width: 40, height: 40, borderRadius: 50, backgroundColor: "#2196F3", justifyContent: "center", alignItems: "center" },
-  botaoAddTexto: { color: "#fff", fontSize: 22, fontWeight: "bold" },
-  aguaSection: { marginTop: 30, backgroundColor: '#F0F8FF', padding: 15, borderRadius: 20, marginBottom: 20 },
+  aguaSection: { marginTop: 10, backgroundColor: '#F0F8FF', padding: 15, borderRadius: 20, marginBottom: 20 },
   tituloAgua: { fontSize: 20, fontWeight: 'bold', color: '#0099ff', marginBottom: 15, textAlign: 'center' },
   gridCopos: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around' },
   copoContainer: { width: '22%', alignItems: 'center', marginBottom: 20 },
