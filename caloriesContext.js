@@ -1,84 +1,59 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from 'react';
 
-const CaloriesContext = createContext(null);
+const CaloriesContext = createContext();
 
 export function CaloriesProvider({ children }) {
-  const CALORIA_META = 2000;
+  // --- Configurações Iniciais ---
+  const [metaDiaria, setMetaDiaria] = useState(2000);
+  const [consumidas, setConsumidas] = useState(0);
+  
+  // Categorias de refeição
+  const [categorias, setCategorias] = useState([
+    { id: '1', nome: 'Café da Manhã', kcalUsada: 0 },
+    { id: '2', nome: 'Almoço', kcalUsada: 0 },
+    { id: '3', nome: 'Jantar', kcalUsada: 0 },
+    { id: '4', nome: 'Lanches', kcalUsada: 0 },
+  ]);
 
-  const [metaDiaria] = useState(CALORIA_META);
+  // --- Dados de Peso (Que adicionamos antes) ---
+  const [pesoAtual, setPesoAtual] = useState(70.0); 
+  const [metaPeso, setMetaPeso] = useState(null); 
 
-  // 🔥 Agora armazenamos os itens de verdade, não só números
-  const [items, setItems] = useState({
-    "1": [], // café da manhã
-    "2": [], // almoço
-    "3": [], // jantar
-    "4": []  // lanches
-  });
+  // --- A FUNÇÃO PRINCIPAL ---
+  const addCalories = (amount, categoriaId) => {
+    // 1. Atualiza o total geral
+    setConsumidas((prev) => prev + amount);
 
-  // 🔥 Soma correta das calorias consumidas
-  const consumidas = Object.values(items)
-    .flat()
-    .reduce((acc, item) => acc + item.kcal, 0);
-
-  const categorias = [
-    {
-      id: "1",
-      nome: "Café da manhã",
-      kcalUsada: items["1"].reduce((acc, item) => acc + item.kcal, 0),
-    },
-    {
-      id: "2",
-      nome: "Almoço",
-      kcalUsada: items["2"].reduce((acc, item) => acc + item.kcal, 0),
-    },
-    {
-      id: "3",
-      nome: "Jantar",
-      kcalUsada: items["3"].reduce((acc, item) => acc + item.kcal, 0),
-    },
-    {
-      id: "4",
-      nome: "Lanches",
-      kcalUsada: items["4"].reduce((acc, item) => acc + item.kcal, 0),
-    },
-  ];
-
-  // 🔥 Agora os itens são adicionados corretamente
-  function addItems(categoriaId, newItems) {
-    if (!newItems || newItems.length === 0) return;
-
-    setItems((prev) => ({
-      ...prev,
-      [categoriaId]: [...prev[categoriaId], ...newItems],
-    }));
-  }
-
-  function resetDay() {
-    setItems({
-      "1": [],
-      "2": [],
-      "3": [],
-      "4": []
-    });
-  }
+    // 2. Atualiza a categoria específica (ex: soma só no Almoço)
+    setCategorias((prevCats) =>
+      prevCats.map((cat) =>
+        cat.id === categoriaId ? { ...cat, kcalUsada: cat.kcalUsada + amount } : cat
+      )
+    );
+  };
 
   return (
-    <CaloriesContext.Provider
-      value={{
-        metaDiaria,
-        consumidas,
-        categorias,
-        addItems,
-        resetDay
-      }}
-    >
+    <CaloriesContext.Provider value={{ 
+      metaDiaria, 
+      consumidas, 
+      categorias, 
+      
+      // AQUI ESTÁ A CORREÇÃO MÁGICA:
+      // Disponibilizamos a função com os dois nomes para não dar erro
+      addCalories,
+      addItems: addCalories, // <--- Isso conserta o erro "addItems is not a function"
+
+      // Dados de peso
+      pesoAtual, 
+      setPesoAtual,
+      metaPeso, 
+      setMetaPeso
+    }}>
       {children}
     </CaloriesContext.Provider>
   );
 }
 
 export function useCalories() {
-  const ctx = useContext(CaloriesContext);
-  if (!ctx) throw new Error("useCalories must be used within CaloriesProvider");
-  return ctx;
+  return useContext(CaloriesContext);
 }
